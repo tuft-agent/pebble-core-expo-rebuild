@@ -1,0 +1,173 @@
+[versions]
+android-compileSdk = "36"
+android-minSdk = "26"
+android-targetSdk = "35"
+agp = "8.13.2"
+kotlin = "2.3.10"
+jvm-toolchain = "17"
+ktor = "3.4.0"
+coroutine = "1.10.2"
+serialization = "1.10.0"
+sqlite = "2.6.2"
+kermit = "2.0.8"
+ksp = "2.3.5"
+# We had some weird problems with BlobDb sync on room 2.8.0
+room = "2.8.4"
+okio = "3.16.4"
+kotlinx-io = "0.8.2"
+kotlinx-datetime = "0.7.1"
+koin = "4.1.1"
+atomicfu = "0.29.0"
+compose-multiplatform = "1.10.1"
+pebblekit = "09f86ee72b"
+settings = "1.3.0"
+kable = "0.42.0"
+kmpio = "0.3.0"
+androidx-core = "1.17.0"
+monitorVersion = "1.8.0"
+androidXTestVersion = "1.7.0"
+androidXRulesVersion = "1.7.0"
+googleServices = "4.4.4"
+firebase-crashlytics-plugin = "3.0.6"
+androidVersion = "2.4.0"
+androidx-activityCompose = "1.12.4"
+androidx-credentials = "1.5.0"
+gms-auth = "21.5.0"
+googleId = "1.1.1"
+androidxWork = "2.11.2"
+play-update = "2.1.0"
+crashkios = "0.9.0"
+androidx-lifecycle = "2.9.6"
+androidx-navigation = "2.9.2"
+firebase-kotlin = "2.4.0"
+# Fixed because of firebase-kotlin
+firebase-bom = "33.15.0"
+kmpnotifier = "1.6.1"
+mixpanel-android = "8.3.0"
+buildkonfig = "0.17.1"
+webview = "2.0.3"
+coil = "3.3.0"
+uri = "0.0.21"
+algolia = "3.38.0"
+coredevices-speex = "1946c84"
+mcp = "0.8.3"
+glance = "1.1.1"
+#noinspection GradleDependency
+coredevices-haversine = "e72dfd6"
+#noinspection GradleDependency
+coredevices-krisp = "811c72e"
+junit-ext = "1.3.0"
+paging = "3.4.0-alpha04"
+reorderable = "3.0.0"
+zxing = "3.5.3"
+compass = "2.4.1"
+health-kmp = "1.0.1"
+
+[plugins]
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+nativeCocoaPods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "atomicfu" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebaseCrashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics-plugin" }
+androidVersion = { id = "de.nanogiants.android-versioning", version.ref = "androidVersion" }
+buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildkonfig" }
+androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+androidLint = { id = "com.android.lint", version.ref = "agp" }
+
+[libraries]
+# We need 1.10.x for floating action menu. 1.11.x alpha seems to be broken (search doesn't bring up keyboard)
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.10.0-alpha05" }
+backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "compose-multiplatform" }
+coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutine" }
+coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutine" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutine" }
+serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
+ktor-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-client-encoding = { module = "io.ktor:ktor-client-encoding", version.ref = "ktor" }
+ktor-client-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-paging = { module = "androidx.room:room-paging", version.ref = "room" }
+paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
+kotlinx-io-okio = { module = "org.jetbrains.kotlinx:kotlinx-io-okio", version.ref = "kotlinx-io" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { group = "io.insert-koin", name = "koin-compose-viewmodel", version.ref = "koin" }
+pebblekit = { module = "com.github.pebble-dev:PebbleKitAndroid2", version.ref = "pebblekit" }
+settings = { group = "com.russhwolf", name = "multiplatform-settings-no-arg", version.ref = "settings" }
+settings-test = { group = "com.russhwolf", name = "multiplatform-settings-test", version.ref = "settings" }
+settings-serialization = { group = "com.russhwolf", name = "multiplatform-settings-serialization", version.ref = "settings" }
+kable = { group = "com.juul.kable", name = "kable-core", version.ref = "kable" }
+kmpio = { module = "io.github.skolson:kmp-io", version.ref = "kmpio" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-monitor = { group = "androidx.test", name = "monitor", version.ref = "monitorVersion" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidXTestVersion" }
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidXRulesVersion" }
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "androidx-credentials" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+gms-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "gms-auth" }
+identity-google = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleId" }
+androidx-work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "androidxWork" }
+play-update = { group = "com.google.android.play", name = "app-update", version.ref = "play-update" }
+play-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "play-update" }
+crashkios = { module = "co.touchlab.crashkios:crashlytics", version.ref = "crashkios" }
+androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+androidx-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
+firebase-auth = { group = "dev.gitlive", name = "firebase-auth", version.ref = "firebase-kotlin" }
+firebase-firestore = { group = "dev.gitlive", name = "firebase-firestore", version.ref = "firebase-kotlin" }
+firebase-crashlytics = { group = "dev.gitlive", name = "firebase-crashlytics", version.ref = "firebase-kotlin" }
+firebase-crashlytics-ndk = { group = "com.google.firebase", name = "firebase-crashlytics-ndk" }
+firebase-storage = { group = "dev.gitlive", name = "firebase-storage", version.ref = "firebase-kotlin" }
+kmpnotifier = { group = "io.github.mirzemehdi", name = "kmpnotifier", version.ref = "kmpnotifier" }
+mixpanel-android = { module = "com.mixpanel.android:mixpanel-android", version.ref = "mixpanel-android" }
+webview = { module = "io.github.kevinnzou:compose-webview-multiplatform", version.ref = "webview" }
+coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
+coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
+uri = { group = "com.eygraber", name = "uri-kmp", version.ref = "uri" }
+algolia = { module = "com.algolia:algoliasearch-client-kotlin", version.ref = "algolia" }
+coredevices-speex = { group = "io.github.coredevices.speex", name = "speex", version.ref = "coredevices-speex" }
+coredevices-haversine = { group = "io.github.coredevices.haversine", name = "haversine", version.ref = "coredevices-haversine" }
+modelcontextprotocol-client = { module = "io.modelcontextprotocol:kotlin-sdk-client", version.ref = "mcp" }
+modelcontextprotocol-core = { module = "io.modelcontextprotocol:kotlin-sdk-core", version.ref = "mcp" }
+modelcontextprotocol-server = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp" }
+androidx-glance = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "glance" }
+androidx-core = { group = "androidx.test", name = "core", version.ref = "androidXTestVersion" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit-ext" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+compass-geocoder = { module = "dev.jordond.compass:geocoder", version.ref = "compass" }
+compass-geocoder-mobile = { module = "dev.jordond.compass:geocoder-mobile", version.ref = "compass" }
+compass-autocomplete = { module = "dev.jordond.compass:autocomplete", version.ref = "compass" }
+compass-autocomplete-mobile = { module = "dev.jordond.compass:autocomplete-mobile", version.ref = "compass" }
+coredevices-krispPrivate = { group = "coredevices.krispkmp", name = "library", version.ref = "coredevices-krisp" }
+health-kmp = { module = "com.viktormykhailiv:health-kmp", version.ref = "health-kmp" }

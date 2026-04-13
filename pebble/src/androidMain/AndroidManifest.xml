@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application>
+        <receiver android:name=".ui.TestActionReceiver" android:exported="false" />
+        <receiver android:name="coredevices.pebble.firmware.UpdateActionReceiver" android:exported="false" />
+
+        <provider
+            android:authorities="coredevices.coreapp.pebblekit"
+            android:name="io.rebble.libpebblecommon.pebblekit.two.PebbleKitProvider"
+            android:exported="true" />
+        <provider
+            android:authorities="com.getpebble.android.provider.basalt"
+            android:name="io.rebble.libpebblecommon.pebblekit.classic.PebbleKitProvider"
+            tools:ignore="ExportedContentProvider"
+            android:exported="true" />
+    </application>
+</manifest>

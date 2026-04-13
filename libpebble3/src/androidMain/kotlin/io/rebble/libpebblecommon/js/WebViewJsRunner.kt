@@ -1,0 +1,446 @@
+package io.rebble.libpebblecommon.js
+
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.net.Uri
+import android.net.http.SslError
+import android.os.Build
+import android.os.Message
+import android.view.View
+import android.webkit.GeolocationPermissions
+import android.webkit.JsPromptResult
+import android.webkit.JsResult
+import android.webkit.PermissionRequest
+import android.webkit.SslErrorHandler
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.core.net.toUri
+import co.touchlab.kermit.Logger
+import io.rebble.libpebblecommon.connection.AppContext
+import io.rebble.libpebblecommon.connection.LibPebble
+import io.rebble.libpebblecommon.database.entity.LockerEntry
+import io.rebble.libpebblecommon.di.LibPebbleKoinComponent
+import io.rebble.libpebblecommon.io.rebble.libpebblecommon.js.WebViewGeolocationInterface
+import io.rebble.libpebblecommon.io.rebble.libpebblecommon.js.WebViewJSLocalStorageInterface
+import io.rebble.libpebblecommon.metadata.pbw.appinfo.PbwAppInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+
+class WebViewJsRunner(
+    appContext: AppContext,
+    private val libPebble: LibPebble,
+    jsTokenUtil: JsTokenUtil,
+    device: CompanionAppDevice,
+    private val scope: CoroutineScope,
+    appInfo: PbwAppInfo,
+    lockerEntry: LockerEntry,
+    jsPath: Path,
+    urlOpenRequests: Channel<String>,
+    logMessages: Channel<String>,
+    remoteTimelineEmulator: RemoteTimelineEmulator,
+    httpInterceptorManager: HttpInterceptorManager,
+): JsRunner(appInfo, lockerEntry, jsPath, device, urlOpenRequests), LibPebbleKoinComponent {
+    private val context = appContext.context
+    companion object {
+        const val API_NAMESPACE = "Pebble"
+        const val PRIVATE_API_NAMESPACE = "_$API_NAMESPACE"
+        const val STARTUP_URL = "file:///android_asset/webview_startup.html"
+        private val logger = Logger.withTag(WebViewJsRunner::class.simpleName!!)
+    }
+
+    private var webView: WebView? = null
+    private val initializedLock = Object()
+    private val publicJsInterface = WebViewPKJSInterface(this, device, context, libPebble, jsTokenUtil)
+    private val privateJsInterface = WebViewPrivatePKJSInterface(this, device, scope, _outgoingAppMessages, logMessages, jsTokenUtil, remoteTimelineEmulator, httpInterceptorManager)
+    private val localStorageInterface = WebViewJSLocalStorageInterface(appInfo.uuid, appContext) {
+        runBlocking(Dispatchers.Main) {
+            webView?.evaluateJavascript(
+                it,
+                null
+            )
+        }
+    }
+    private val geolocationInterface = WebViewGeolocationInterface(scope, this)
+    private val interfaces = setOf(
+            Pair(API_NAMESPACE, publicJsInterface),
+            Pair(PRIVATE_API_NAMESPACE, privateJsInterface),
+            Pair("_localStorage", localStorageInterface),
+            Pair("_PebbleGeo", geolocationInterface)
+    )
+
+    private val webViewClient = object : WebViewClient() {
+        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            return true
+        }
+
+        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+        }
+
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            logger.d { "Page finished loading: $url" }
+        }
+
+        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+            super.onReceivedError(view, request, error)
+            logger.e {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    "Error loading page: ${error?.errorCode} ${error?.description}"
+                } else {
+                    "Error loading page: ${error?.toString()}"
+                }
+            }
+        }
+
+        override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+            super.onReceivedSslError(view, handler, error)
+            logger.e { "SSL error loading page: ${error?.primaryError}" }
+            handler?.cancel()
+        }
+
+        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+            if (isForbidden(request?.url)) {
+                return object : WebResourceResponse("text/plain", "utf-8", null) {
+                    override fun getStatusCode(): Int {
+                        return 403
+                    }
+
+                    override fun getReasonPhrase(): String {
+                        return "Forbidden"
+                    }
+                }
+            } else {
+                return super.shouldInterceptRequest(view, request)
+            }
+        }
+    }
+
+    private fun isForbidden(url: Uri?): Boolean {
+        return if (url == null) {
+            logger.w { "Blocking null URL" }
+            true
+        } else if (url.scheme?.uppercase() != "FILE") {
+            false
+        } else if (url.path?.uppercase() == jsPath.toString().uppercase()) {
+            false
+        } else {
+            logger.w { "Blocking access to file: ${url.path}" }
+            true
+        }
+    }
+
+    private val chromeClient = object : WebChromeClient() {
+
+        override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean {
+            return false
+        }
+
+        override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+            return false
+        }
+
+        override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+            return false
+        }
+
+        override fun onJsBeforeUnload(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+            return false
+        }
+
+        override fun onJsPrompt(view: WebView?, url: String?, message: String?, defaultValue: String?, result: JsPromptResult?): Boolean {
+            return false
+        }
+
+        override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+            //Stub
+        }
+
+        override fun onShowFileChooser(webView: WebView?, filePathCallback: ValueCallback<Array<Uri>>?, fileChooserParams: FileChooserParams?): Boolean {
+            return false
+        }
+
+        override fun onPermissionRequest(request: PermissionRequest?) {
+            logger.d { "Permission request for: ${request?.resources?.joinToString()}" }
+            request?.deny()
+        }
+
+        override fun onGeolocationPermissionsShowPrompt(
+            origin: String?,
+            callback: GeolocationPermissions.Callback?
+        ) {
+            callback?.invoke(origin, false, false)
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+    private suspend fun init() = withContext(Dispatchers.Main) {
+        if (libPebble.config.value.watchConfig.pkjsInspectable) {
+            WebView.setWebContentsDebuggingEnabled(true) // Sadly sets globally for this process
+        }
+        webView = WebView(context).also {
+            it.setWillNotDraw(true)
+            val settings = it.settings
+            settings.javaScriptEnabled = true
+            settings.allowFileAccess = true
+            settings.allowContentAccess = false
+
+            //TODO: use WebViewAssetLoader instead
+            settings.allowUniversalAccessFromFileURLs = true
+            settings.allowFileAccessFromFileURLs = true
+
+            settings.setGeolocationEnabled(true)
+            settings.databaseEnabled = true
+            settings.domStorageEnabled = true
+            settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            it.clearCache(true)
+
+            interfaces.forEach { (namespace, jsInterface) ->
+                it.addJavascriptInterface(jsInterface, namespace)
+            }
+            it.webViewClient = webViewClient
+            it.webChromeClient = chromeClient
+        }
+    }
+
+    private fun restoreLocalStorage() {
+        runBlocking(Dispatchers.Main) {
+            webView?.evaluateJavascript("""
+                (function() {
+                    window.localStorage.clear();
+                    const localStorageData = JSON.parse(window._localStorage.restoreState());
+                    for (const [key, value] of Object.entries(localStorageData)) {
+                        window.localStorage.setItem(key, value);
+                    }
+                    const originalSetItem = window.localStorage.setItem;
+                    const originalRemoveItem = window.localStorage.removeItem;
+                    const originalClear = window.localStorage.clear;
+                    
+                    ${/* Shim to keep _localStorage in sync with localStorage realtime as best we can (can't handle property accessors) */ ""}
+                    window.localStorage.setItem = function(key, value) {
+                        originalSetItem.call(this, key, value);
+                        window._localStorage.setItem(key, value);
+                    };
+                    window.localStorage.removeItem = function(key) {
+                        originalRemoveItem.call(this, key);
+                        window._localStorage.removeItem(key);
+                    };
+                    window.localStorage.clear = function() {
+                        originalClear.call(this);
+                        window._localStorage.clear();
+                    };
+                })();
+                window.__localStorageShimmed = true;
+            """.trimIndent()
+            ) {
+                logger.d { "localStorage shimmed" }
+            }
+        }
+    }
+
+
+    override suspend fun start() {
+        synchronized(initializedLock) {
+            check(webView == null) { "WebviewJsRunner already started" }
+        }
+        try {
+            init()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            synchronized(initializedLock) {
+                webView = null
+            }
+            throw e
+        }
+        check(webView != null) { "WebView not initialized" }
+        logger.d { "WebView initialized" }
+        loadApp(jsPath.toString())
+    }
+
+    private suspend fun persistLocalStorage() {
+        suspendCancellableCoroutine { cont ->
+            webView?.evaluateJavascript("""
+                (function() {
+                    const data = {};
+                    for (let i = 0; i < window.localStorage.length; i++) {
+                        const key = window.localStorage.key(i);
+                        const value = window.localStorage.getItem(key);
+                        data[key] = value;
+                    }
+                    window.localStorage.clear();
+                    window._localStorage.saveState(JSON.stringify(data));
+                })();
+                    """.trimIndent()
+            ) {
+                cont.resume(Unit)
+            }
+        }
+    }
+
+    override suspend fun stop() {
+        //TODO: Close config screens
+        _readyState.value = false
+        withContext(Dispatchers.Main) {
+            // Save final state of localStorage to our scoped storage, to catch any
+            // property-accessor changes (not caught by our shim)
+            persistLocalStorage()
+            interfaces.forEach { (namespace, _) ->
+                webView?.removeJavascriptInterface(namespace)
+            }
+            webView?.loadUrl("about:blank")
+            webView?.stopLoading()
+            webView?.clearHistory()
+            webView?.removeAllViews()
+            webView?.clearCache(true)
+            webView?.destroy()
+        }
+        synchronized(initializedLock) {
+            webView = null
+        }
+    }
+
+    private suspend fun loadApp(url: String) {
+        check(webView != null) { "WebView not initialized" }
+        withContext(Dispatchers.Main) {
+            webView?.loadUrl(
+                STARTUP_URL.toUri().buildUpon()
+                    .appendQueryParameter("params", "{\"loadUrl\": \"$url\"}")
+                    .build()
+                    .toString()
+            )
+        }
+    }
+
+    override suspend fun loadAppJs(jsUrl: String) {
+        webView?.let { webView ->
+            restoreLocalStorage()
+
+            if (jsUrl.isBlank() || !jsUrl.endsWith(".js")) {
+                logger.e { "loadUrl passed to loadAppJs empty or invalid" }
+                return
+            }
+
+            val urlAsUri = Uri.fromFile(File(jsUrl)).toString()
+
+            withContext(Dispatchers.Main) {
+                webView.evaluateJavascript(
+                        """
+                            (() => {
+                                const signalLoaded = () => {
+                                    _Pebble.signalAppScriptLoadedByBootstrap();
+                                }
+                                const head = document.getElementsByTagName("head")[0];
+                                const script = document.createElement("script");
+                                script.type = "text/javascript";
+                                script.onreadystatechange = signalLoaded;
+                                script.onload = signalLoaded;
+                                script.charset = "utf-8";
+                                script.src = ${Json.encodeToString(urlAsUri)};
+                                head.appendChild(script);
+                            })();
+                            """.trimIndent()
+                ) { value -> logger.d { "added app script tag" } }
+                webView.evaluateJavascript("document.title = ${Json.encodeToString("PKJS: ${appInfo.longName}")};", null)
+            }
+        } ?: error("WebView not initialized")
+    }
+
+    override suspend fun signalInterceptResponse(callbackId: String, result: InterceptResponse) {
+        val jsonString = buildJsonObject {
+            put("callbackId", callbackId)
+            put("response", result.result)
+            put("status", result.status)
+        }.toString()
+        withContext(Dispatchers.Main) {
+            // No Json.encodeToString here, we want the raw object {} in the JS call
+            webView?.evaluateJavascript("window.signalInterceptResponse($jsonString)", null)
+        }
+    }
+
+    override suspend fun signalTimelineToken(callId: String, token: String) {
+        val tokenJson = Json.encodeToString(mapOf("userToken" to token, "callId" to callId))
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalTimelineTokenSuccess(${Json.encodeToString(tokenJson)})", null)
+        }
+    }
+
+    override suspend fun signalTimelineTokenFail(callId: String) {
+        val tokenJson = Json.encodeToString(mapOf("userToken" to null, "callId" to callId))
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalTimelineTokenFailure(${Json.encodeToString(tokenJson)})", null)
+        }
+    }
+
+    override suspend fun signalReady() {
+        val readyDeviceIds = listOf(device.identifier.asString)
+        val readyJson = Json.encodeToString(readyDeviceIds)
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalReady(${readyJson})", null)
+        }
+        _readyState.value = true
+    }
+
+    override suspend fun signalNewAppMessageData(data: String?): Boolean {
+        readyState.first { it }
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalNewAppMessageData(${data?.let { Json.encodeToString(data) } ?: "null"})", null)
+        }
+        return true
+    }
+
+    override suspend fun signalShowConfiguration() {
+        readyState.first { it }
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalShowConfiguration()", null)
+        }
+    }
+
+    override suspend fun signalWebviewClosed(data: String?) {
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript("window.signalWebviewClosedEvent(${Json.encodeToString(data)})", null)
+        }
+    }
+
+    override suspend fun eval(js: String) {
+        withContext(Dispatchers.Main) {
+            webView?.evaluateJavascript(js, null) ?: run {
+                logger.e { "WebView not initialized, cannot evaluate JS" }
+            }
+        }
+    }
+
+    override suspend fun evalWithResult(js: String): Any? {
+        return withContext(Dispatchers.Main) {
+            return@withContext suspendCancellableCoroutine { cont ->
+                webView?.evaluateJavascript(js) { result ->
+                    cont.resume(result)
+                } ?: cont.resumeWithException(IllegalStateException("WebView not initialized"))
+            }
+        }
+    }
+
+    override fun debugForceGC() {
+        // No-op on Android
+    }
+}

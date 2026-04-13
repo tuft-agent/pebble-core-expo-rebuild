@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Pebble Core Expo",
+    "slug": "pebble-core-expo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0A11"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.pebblecoreexpo",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to discover, pair, and stay connected to Pebble and Core watches.",
+        "NSAccessorySetupBluetoothCompanyIdentifiers": [
+          "0x0B49",
+          "0x0EEA"
+        ],
+        "NSAccessorySetupBluetoothServices": [
+          "607B5C9B-3700-4E94-F44A-2DF900BCB0C3",
+          "0000FCC9-0000-1000-8000-00805F9B34FB"
+        ],
+        "UIBackgroundModes": [
+          "fetch",
+          "bluetooth-central",
+          "bluetooth-peripheral"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0A11"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.pebblecoreexpo"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
