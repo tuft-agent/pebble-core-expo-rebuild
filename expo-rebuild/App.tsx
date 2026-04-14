@@ -5,6 +5,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/space-grotesk';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AppShell from './src/AppShell';
@@ -22,7 +23,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'light'} />
       <AppShell />
     </SafeAreaProvider>
   );
